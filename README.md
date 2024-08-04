@@ -1,4 +1,4 @@
-EquipmentAttributeTool
+EquipmentAttributeTool - For Tarisland
 
 This repository contains a Google Apps Script designed to enhance the management of equipment attributes within Google Sheets. The script enables interactive and dynamic handling of attributes through checkboxes, automating the calculation and display of attribute totals and their respective percentages. It ensures that selections are mutually exclusive where required, maintaining logical consistency across equipment types.
 
