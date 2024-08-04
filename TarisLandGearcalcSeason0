@@ -1,0 +1,104 @@
+function onOpen() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const headers = ["Attribute", "Helmet", "Shoulder Guards", "Armor", "Belt", "Greaves", "Boots", "Ring", "Necklace", "Badge", "Cape", "Gauntlets", "Leather Gauntlets", "Accessories", "Staff"];
+  sheet.getRange("A1:O1").setValues([headers]);
+  
+  // Add checkboxes for each equipment category and specific rows
+  addCheckboxes(sheet, 'B', 2, 9);  // Helmet
+  addCheckboxes(sheet, 'C', [2, 3, 4, 5, 10, 11, 14, 15]);  // Shoulder Guards
+  addCheckboxes(sheet, 'D', 2, 11);  // Armor
+  addCheckboxes(sheet, 'E', [2, 3, 4, 5, 10, 11, 14, 15]);  // Belt
+  addCheckboxes(sheet, 'F', 2, 11);  // Greaves
+  addCheckboxes(sheet, 'G', 2, 9);   // Boots
+  addCheckboxes(sheet, 'H', 2, 9);   // Ring
+  addCheckboxes(sheet, 'I', 2, 11);  // Necklace
+  addCheckboxes(sheet, 'J', 2, 11);  // Badge
+  addCheckboxes(sheet, 'K', [2, 3, 4, 5, 10, 11, 14, 15]);  // Cape
+  addCheckboxes(sheet, 'L', [2, 3, 4, 5, 12, 13, 14, 15]);  // Gauntlets
+  addCheckboxes(sheet, 'M', [2, 3, 4, 5, 12, 13, 14, 15]);  // Leather Gauntlets
+  addCheckboxes(sheet, 'N', [2, 3, 4, 5, 12, 13, 14, 15]);  // Accessories
+  addCheckboxes(sheet, 'O', [2, 3, 4, 5, 10, 11, 14, 15]);  // Staff
+
+  // Initial data for attributes in Column A
+  const stats = [
+    "+140 Intelligence", "+210 Intelligence",
+    "+140 Stamina", "+210 Stamina",
+    "+140 Omni", "+210 Omni",
+    "+140 Cooldown", "+210 Cooldown",
+    "+140 Crit. Chance", "+210 Crit. Chance",
+    "+140 Hit", "+210 Hit",
+    "+140 Focus", "+210 Focus"
+  ];
+  sheet.getRange(2, 1, stats.length, 1).setValues(stats.map(stat => [stat]));
+  
+  // Setup headers for Attribute Names and Total Values in Columns Q and R
+  sheet.getRange("Q1").setValue("Attribute");
+  sheet.getRange("R1").setValue("Total Values");
+  sheet.getRange("Q2:Q8").setValues([["Intelligence"], ["Stamina"], ["Omni"], ["Cooldown"], ["Crit. Chance"], ["Hit"], ["Focus"]]);
+}
+
+function addCheckboxes(sheet, column, start, end) {
+  if (Array.isArray(start)) {
+    start.forEach(row => sheet.getRange(column + row).insertCheckboxes());
+  } else {
+    sheet.getRange(`${column}${start}:${column}${end}`).insertCheckboxes();
+  }
+}
+
+function onEdit(e) {
+    const sheet = e.range.getSheet();
+    // Only act on checkbox columns and ignore others
+    if (e.range.columnStart >= 2 && e.range.columnStart <= 15) {
+        const checkBoxColumn = e.range.getColumn();
+        const checkBoxRow = e.range.getRow();
+        const isChecked = e.range.isChecked();
+
+        if (isChecked) {
+            // Calculate the attribute index, and determine if it's a +140 or +210 version
+            const attributeGroupIndex = Math.floor((checkBoxRow - 2) / 2);
+            const pairRow = attributeGroupIndex * 2 + 2 + (checkBoxRow % 2 === 0 ? 1 : 0); // Toggle between +140 and +210
+
+            // Uncheck the paired checkbox within the same column
+            sheet.getRange(pairRow, checkBoxColumn).uncheck();
+        }
+
+        // Recalculate totals after any change
+        updateTotals(sheet);
+    }
+}
+
+function updateTotals(sheet) {
+    const totals = [0, 0, 0, 0, 0, 0, 0];  // Seven attributes
+    const statRanges = sheet.getRange("A2:A16").getValues();
+    const lastColumn = 15;  // Adjusted to O column for the last equipment column
+    
+    // Calculate totals based on checked state
+    for (let col = 2; col <= lastColumn; col++) {
+        const checkBoxes = sheet.getRange(2, col, 15).getValues();
+        checkBoxes.forEach((checked, i) => {
+            if (checked[0]) {
+                const statValue = parseInt(statRanges[i][0].split(' ')[0], 10);
+                const attributeIndex = Math.floor(i / 2);
+                totals[attributeIndex] += statValue;
+            }
+        });
+    }
+
+    // Conversion factors and formats for displaying in percentages
+    const conversionFactors = {
+        'Crit Chance': 0.01904,  // Crit Chance conversion factor per point
+        'Cooldown': 0.01428,  // Cooldown conversion factor per point
+        'Omni': 0.008571  // Omni conversion factor per point
+    };
+
+    // Update the total values in Column R
+    totals.forEach((total, i) => {
+        let attributeName = sheet.getRange("Q" + (i + 2)).getValue();
+        let value = total;
+        if (attributeName === "Crit Chance" || attributeName === "Cooldown" || attributeName === "Omni") {
+            let factor = conversionFactors[attributeName];
+            value = (total * factor).toFixed(2) + '%';
+        }
+        sheet.getRange(i + 2, 18).setValue(value);
+    });
+}
